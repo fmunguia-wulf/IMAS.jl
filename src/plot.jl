@@ -2211,7 +2211,7 @@ end
 
         if aggregate_hcd
             for (source_type, color) in ((:ec, :blue), (:ic, :green), (:lh, :magenta), (:nbi, :red), (:pellet, :purple))
-                idx = name_2_index(tmp_source)[source_type]
+                idx = name_2_index(cs.source)[source_type]
                 tmp_source = IMAS.core_sources__source{T}()
                 push!(tmp_source.profiles_1d, total_sources(dd; time0, include_indexes=[idx]))
                 tmp_source.identifier.index = idx
@@ -4140,7 +4140,7 @@ end
     end
 end
 
-@recipe function plot_field_1d_manyDDs(ids::IDS, field::Symbol, DDs::AbstractVector{<:IMAS.dd})
+@recipe function plot_field_1d_manyDDs(ids::IDS, field::Symbol, DDs::AbstractVector{<:IMAS.DD})
     @series begin
         [IMAS.goto(dd, IMAS.location(ids)) for dd in DDs], field
     end
