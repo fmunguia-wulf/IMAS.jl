@@ -512,7 +512,12 @@ function find_psi_last_diverted(
         null_within_wall = true
     end
 
-    if isempty(eqt.boundary.strike_point)
+    # same rationale as the boundary-search fix above: strike points are a
+    # free-boundary/diverted-equilibrium concept found by searching wall
+    # geometry — meaningless (and can be spurious) for a fixed-boundary solve
+    # (e.g. CHEASE with free_boundary=false), where there's no real divertor
+    # topology to discover.
+    if isempty(eqt.boundary.strike_point) && (ismissing(eqt.global_quantities, :free_boundary) || eqt.global_quantities.free_boundary == 1)
         find_strike_points!(eqt, wall_r, wall_z, psi_boundaries.last_closed, psi_boundaries.first_open)
     end
 
@@ -1415,8 +1420,19 @@ function flux_surfaces(eqt::equilibrium__time_slice{T1}, wall_r::AbstractVector{
     eqt.global_quantities.magnetic_axis.r, eqt.global_quantities.magnetic_axis.z = RA, ZA
     psi_axis = PSI_interpolant(RA, ZA)
 
-    # accurately find the lcfs and scale psi accordingly
-    if !isempty(wall_r) || eqt.global_quantities.free_boundary == 1
+    # accurately find the lcfs and scale psi accordingly. Only search for the
+    # boundary if this equilibrium was actually solved as free-boundary — a
+    # fixed-boundary solve (e.g. CHEASE with free_boundary=false) already has
+    # the exact user-specified boundary in eqt1d.psi[end]; re-discovering it
+    # via find_psi_boundary against wall geometry can find a spurious boundary
+    # (e.g. a false strike point) since there's nothing to discover. Checking
+    # !isempty(wall_r) alone (as this used to) is wrong because wall geometry
+    # can be populated for fixed-boundary runs too (e.g. for divertor/build
+    # calculations), incorrectly triggering boundary search in that case.
+    # free_boundary is missing (not 0/1) for equilibria that never went
+    # through an actor that sets it (e.g. raw fetched EFIT reconstructions) —
+    # those are genuinely free-boundary in nature, so default to searching.
+    if ismissing(eqt.global_quantities, :free_boundary) || eqt.global_quantities.free_boundary == 1
         psi_boundaries = find_psi_boundary(r, z, eqt2d.psi, psi_axis, eqt1d.psi[end], RA, ZA, wall_r, wall_z;
             PSI_interpolant, raise_error_on_not_open=false, raise_error_on_not_closed=false)
     else
